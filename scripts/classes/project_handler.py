@@ -61,37 +61,25 @@ class ProjectHandler:
 
         tickers_data_request = [
             {
-                'ticker': 'AAPL',  # interested in Apple's ticker
+                'ticker': 'AAPL',
                 'start': '2000-07-01',  # start date
                 'end': None,  # end date None = Today
                 'parameters': ['Adj Close']  # Specified in a list or 'All'
             },
             {
-                'ticker': 'LIN',  # interested in Apple's ticker
+                'ticker': 'LIN',
                 'start': '2000-07-01',  # start date
                 'end': None,  # end date None = Today
                 'parameters': ['Adj Close']  # Specified in a list or 'All'
             },
             {
-                'ticker': 'V',  # interested in Apple's ticker
+                'ticker': 'V',
                 'start': '2000-07-01',  # start date
                 'end': None,  # end date None = Today
                 'parameters': ['Adj Close']  # Specified in a list or 'All'
             },
             {
-                'ticker': 'META',  # interested in Apple's ticker
-                'start': '2000-07-01',  # start date
-                'end': None,  # end date None = Today
-                'parameters': ['Adj Close']  # Specified in a list or 'All'
-            },
-            {
-                'ticker': 'NEE',  # interested in Apple's ticker
-                'start': '2000-07-01',  # start date
-                'end': None,  # end date None = Today
-                'parameters': ['Adj Close']  # Specified in a list or 'All'
-            },
-            {
-                'ticker': 'TMO',  # interested in Apple's ticker
+                'ticker': 'MMM',
                 'start': '2000-07-01',  # start date
                 'end': None,  # end date None = Today
                 'parameters': ['Adj Close']  # Specified in a list or 'All'
@@ -130,21 +118,27 @@ class ProjectHandler:
 
     def extract_features_for_ticker_and_save(self, main_data_series, ticker):
 
-        # Simple periodic rations
+        # Simple periodic rations of 1 day ago, 2 days ago, until 5
         periodic_ratios_dict = {
             f'periodic_ratios_{i}': fe.periodic_ratios(main_data_series,
                                                        gaps=i)
             for i in range(5)}
 
         # Simple moving averages
-        ma_dict = {}
-        for window in [10, 12, 26, 30]:
+        ma_list = []
+        for window in [5, 10, 20, 30]:
             ma = fe.moving_average(main_data_series, window=window)
-            ratios, days = fe.ratios_and_days_since_crossing(main_data_series, ma)
-            serial = f'{window}'
-            ma_dict[f'ma_{serial}_ratios'] = ratios
-            ma_dict[f'ma_{serial}_days'] = days
-        print('cp3')
+            ma_list.append(ma)
+
+        ma_dict = {}
+        for i in range(len(ma_list)):
+            for j in range(len(ma_list)):
+                if i != j:
+                    ratios, days = fe.ratios_and_days_since_crossing(
+                        ma_list[i], ma_list[j])
+                    periodic_ratios_dict[f'{ratios.name}'] = ratios
+                    periodic_ratios_dict[f'{days.name}'] = days
+
         # Exponential moving averages
         ema_dict = {}
         for alpha in range(1, 10):
@@ -163,7 +157,7 @@ class ProjectHandler:
         bollinger_dict = {}
         for window in [10, 12, 26, 30]:
             bollinger_dict[window] = {}
-            for std in [1, 2, 3]:
+            for std in [1, 1.5, 2]:
                 bollinger = fe.bollinger_line(main_data_series,
                                               window=window,
                                               std_multiplier=std)
@@ -278,10 +272,11 @@ class ProjectHandler:
 
         x_names = [file for file in all_files if file.startswith('x_')]
         y_names = [file for file in all_files if file.startswith('y_')]
+        apple_file_name = [name for name in y_names if 'AAPL' in name][0]
 
         # raw = self.fs.load_pickle('data_raw_input', 'AAPL_ticker_data')
         xs = [self.fs.load_pickle('data_raw_input', name) for name in x_names]
-        y = self.fs.load_pickle('data_raw_input', y_names[0])
+        y = self.fs.load_pickle('data_raw_input', apple_file_name)
 
         # Preprocess your data, handle missing values, etc.
         # Extract column names from the names of the Series
